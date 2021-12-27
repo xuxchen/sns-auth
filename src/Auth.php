@@ -13,7 +13,7 @@ use think\facade\Request;
  * 2，可以同时对多条规则进行认证，并设置多条规则的关系（or或者and）
  *      $auth=new Auth();  $auth->check('规则1,规则2','用户id','and')
  *      第三个参数为and时表示，用户需要同时具有规则1和规则2的权限。 当第三个参数为or时，表示用户值需要具备其中一个条件即可。默认为or
- * 3，一个用户可以属于多个用户组(auth_group_access表 定义了用户所属用户组)。我们需要设置每个用户组拥有哪些规则(auth_group 定义了用户组权限)
+ * 3，一个用户可以属于多个角色(auth_role_access表 定义了用户所属角色)。我们需要设置每个角色拥有哪些规则(auth_role 定义了角色权限)
  *
  * 4，支持规则表达式。
  *      在auth_rule 表中定义一条规则时，如果type为1， condition字段就可以定义规则表达式。 如定义{score}>5  and {score}<100  表示用户的分数在5-100之间时这条规则才会通过。
@@ -35,11 +35,11 @@ CREATE TABLE `think_auth_rule` (
     UNIQUE KEY `name` (`name`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
 ------------------------------
--- think_auth_group 用户组表， 
--- id：主键， title:用户组中文名称， rules：用户组拥有的规则id， 多个规则","隔开，status 状态：为1正常，为0禁用
+-- think_auth_role 角色表， 
+-- id：主键， title:角色中文名称， rules：角色拥有的规则id， 多个规则","隔开，status 状态：为1正常，为0禁用
 ------------------------------
- DROP TABLE IF EXISTS `think_auth_group`;
-CREATE TABLE `think_auth_group` ( 
+ DROP TABLE IF EXISTS `think_auth_role`;
+CREATE TABLE `think_auth_role` ( 
     `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT, 
     `title` char(100) NOT NULL DEFAULT '', 
     `status` tinyint(1) NOT NULL DEFAULT '1', 
@@ -47,16 +47,16 @@ CREATE TABLE `think_auth_group` (
     PRIMARY KEY (`id`)
 ) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
 ------------------------------
--- think_auth_group_access 用户组明细表
--- uid:用户id，group_id：用户组id
+-- think_auth_role_access 角色明细表
+-- uid:用户id，role_id：角色id
 ------------------------------
-DROP TABLE IF EXISTS `think_auth_group_access`;
-CREATE TABLE `think_auth_group_access` (  
+DROP TABLE IF EXISTS `think_auth_role_access`;
+CREATE TABLE `think_auth_role_access` (  
     `uid` mediumint(8) unsigned NOT NULL,  
-    `group_id` mediumint(8) unsigned NOT NULL, 
-    UNIQUE KEY `uid_group_id` (`uid`,`group_id`),  
+    `role_id` mediumint(8) unsigned NOT NULL,
+    UNIQUE KEY `uid_role_id` (`uid`,`role_id`),
     KEY `uid` (`uid`), 
-    KEY `group_id` (`group_id`)
+    KEY `role_id` (`role_id`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8;
 */
 class Auth
@@ -69,8 +69,8 @@ class Auth
     protected $config = [
         'auth_on' => 1, // 权限开关
         'auth_type' => 1, // 认证方式，1为实时认证；2为登录认证。
-        'auth_group' => 'auth_group', // 用户组数据表名
-        'auth_group_access' => 'auth_group_access', // 用户-用户组关系表
+        'auth_role' => 'auth_role', // 角色数据表名
+        'auth_role_access' => 'auth_role_access', // 用户-角色关系表
         'auth_rule' => 'auth_rule', // 权限规则表
         'auth_user' => 'auth_user', // 用户信息表
     ];
@@ -152,28 +152,28 @@ class Auth
         return false;
     }
     /**
-     * 根据用户id获取用户组,返回值为数组
+     * 根据用户id获取角色,返回值为数组
      * @param  $uid int     用户id
-     * return array       用户所属的用户组 array(
-     *     array('uid'=>'用户id','group_id'=>'用户组id','title'=>'用户组名称','rules'=>'用户组拥有的规则id,多个,号隔开'),
+     * return array       用户所属的角色 array(
+     *     array('uid'=>'用户id','role_id'=>'角色id','title'=>'角色名称','rules'=>'角色拥有的规则id,多个,号隔开'),
      *     ...)
      */
-    public function getGroups($uid)
+    public function getRoles($uid)
     {
-        static $groups = [];
-        if (isset($groups[$uid])) {
-            return $groups[$uid];
+        static $roles = [];
+        if (isset($roles[$uid])) {
+            return $roles[$uid];
         }
         // 转换表名
-        $auth_group_access = $this->config['auth_group_access'];
-        $auth_group = $this->config['auth_group'];
+        $auth_role_access = $this->config['auth_role_access'];
+        $auth_role = $this->config['auth_role'];
         // 执行查询
-        $user_groups = Db::view($auth_group_access, 'uid,group_id')
-            ->view($auth_group, 'title,rules', "{$auth_group_access}.group_id={$auth_group}.id", 'LEFT')
-            ->where("{$auth_group_access}.uid='{$uid}' and {$auth_group}.status='1'")
+        $user_roles = Db::view($auth_role_access, 'uid,role_id')
+            ->view($auth_role, 'title,rules', "{$auth_role_access}.role_id={$auth_role}.id", 'LEFT')
+            ->where("{$auth_role_access}.uid='{$uid}' and {$auth_role}.status='1'")
             ->select();
-        $groups[$uid] = $user_groups ?: [];
-        return $groups[$uid];
+        $roles[$uid] = $user_roles ?: [];
+        return $roles[$uid];
     }
     /**
      * 获得权限列表
@@ -191,10 +191,10 @@ class Auth
         if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid . $t)) {
             return Session::get('_auth_list_' . $uid . $t);
         }
-        //读取用户所属用户组
-        $groups = $this->getGroups($uid);
-        $ids = []; //保存用户所属用户组设置的所有权限规则id
-        foreach ($groups as $g) {
+        //读取用户所属角色
+        $roles = $this->getRoles($uid);
+        $ids = []; //保存用户所属角色设置的所有权限规则id
+        foreach ($roles as $g) {
             $ids = array_merge($ids, explode(',', trim($g['rules'], ',')));
         }
         $ids = array_unique($ids);
@@ -207,7 +207,7 @@ class Auth
             ['id','in', $ids],
             //['status','=',1],
         ];
-        //读取用户组所有权限规则
+        //读取角色所有权限规则
         $rules = Db::name($this->config['auth_rule'])->where($map)->field('condition,name')->select();
         //循环规则，判断结果。
         $authList = []; //
@@ -248,11 +248,10 @@ class Auth
         return $userinfo[$uid];
     }
     //根据uid获取角色名称
-    //根据uid获取角色名称
     function getRole($uid){
         try{
-            $auth_group_access =  Db::name($this->config['auth_group_access'])->where('uid',$uid)->find();
-            $title =   Db::name($this->config['auth_group'])->where('id',$auth_group_access['group_id'])->value('title');
+            $auth_role_access =  Db::name($this->config['auth_role_access'])->where('uid',$uid)->find();
+            $title =   Db::name($this->config['auth_role'])->where('id',$auth_role_access['role_id'])->value('title');
             return $title;
         }catch (\Exception $e){
             return '此用户未授予角色';
@@ -261,10 +260,10 @@ class Auth
     /**
      * 授予用户权限
      */
-    public   function  setRole($uid,$group_id){
-        $res =  Db::name('auth_group_access')
+    public   function  setRole($uid,$role_id){
+        $res =  Db::name('auth_role_access')
             ->where('uid',$uid)
-            ->update(['group_id'=>$group_id]);
+            ->update(['role_id'=>$role_id]);
         return true;
     }
 }
