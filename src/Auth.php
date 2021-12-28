@@ -126,7 +126,8 @@ class Auth
         if ('url' == $mode) {
             $REQUEST = unserialize(strtolower(serialize(Request::param())));
         }
-        foreach ($authList as $auth) {
+        foreach ($authList as $avo) {
+            $auth = $avo['name'];
             $query = preg_replace('/^.+\?/U', '', $auth);
             if ('url' == $mode && $query != $auth) {
                 parse_str($query, $param); //解析规则中的param
@@ -205,7 +206,7 @@ class Auth
             ['status','=',1],
         ];
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('condition,name')->select();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,name,title,type,pid,icon,url,level')->select();
         //循环规则，判断结果。
         $authList = []; //
         foreach ($rules as $rule) {
@@ -216,11 +217,11 @@ class Auth
                 //dump($command); //debug
                 @(eval('$condition=(' . $command . ');'));
                 if ($condition) {
-                    $authList[] = strtolower($rule['name']);
+                    $authList[] = $rule;
                 }
             } else {
                 //只要存在就记录
-                $authList[] = strtolower($rule['name']);
+                $authList[] = $rule;
             }
         }
         $_authList[$uid] = $authList;
@@ -228,7 +229,7 @@ class Auth
             //规则列表结果保存到session
             Session::set('_auth_list_' . $uid, $authList);
         }
-        return array_unique($authList);
+        return $authList;
     }
 
     public function getPermissionMenuList($uid){
@@ -243,7 +244,7 @@ class Auth
         return $this->listToTree($menuList,'id','pid','children');
     }
     /**
-     * 获得用户资料,根据自己的情况读取数据库 
+     * 获得用户资料,根据自己的情况读取数据库
      */
     function getUserInfo($uid)
     {
