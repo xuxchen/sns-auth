@@ -178,18 +178,16 @@ class Auth
     /**
      * 获得权限列表
      * @param integer $uid 用户id
-     * @param integer $type
      * return array
      */
-    protected function getAuthList($uid, $type)
+    protected function getAuthList($uid)
     {
         static $_authList = []; //保存用户验证通过的权限列表
-        $t = implode(',', (array)$type);
-        if (isset($_authList[$uid . $t])) {
-            return $_authList[$uid . $t];
+        if (isset($_authList[$uid])) {
+            return $_authList[$uid];
         }
-        if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid . $t)) {
-            return Session::get('_auth_list_' . $uid . $t);
+        if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid )) {
+            return Session::get('_auth_list_' . $uid );
         }
         //读取用户所属角色
         $roles = $this->getRoles($uid);
@@ -199,13 +197,12 @@ class Auth
         }
         $ids = array_unique($ids);
         if (empty($ids)) {
-            $_authList[$uid . $t] = [];
+            $_authList[$uid] = [];
             return [];
         }
         $map = [
-            ['type','=',$type],
             ['id','in', $ids],
-            //['status','=',1],
+            ['status','=',1],
         ];
         //读取角色所有权限规则
         $rules = Db::name($this->config['auth_rule'])->where($map)->field('condition,name')->select();
@@ -226,12 +223,19 @@ class Auth
                 $authList[] = strtolower($rule['name']);
             }
         }
-        $_authList[$uid . $t] = $authList;
+        $_authList[$uid] = $authList;
         if (2 == $this->config['auth_type']) {
             //规则列表结果保存到session
-            Session::set('_auth_list_' . $uid . $t, $authList);
+            Session::set('_auth_list_' . $uid, $authList);
         }
         return array_unique($authList);
+    }
+
+    function getPermissionMenuList($uid){
+        $roles = $this->getRoles($uid);
+        if (!empty($roles)){
+            
+        }
     }
     /**
      * 获得用户资料,根据自己的情况读取数据库 
