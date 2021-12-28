@@ -231,11 +231,16 @@ class Auth
         return array_unique($authList);
     }
 
-    function getPermissionMenuList($uid){
-        $roles = $this->getRoles($uid);
-        if (!empty($roles)){
-            
+    public function getPermissionMenuList($uid){
+        $rules = $this->getAuthList($uid);
+        $menuList = [];
+        foreach ($rules as $val) {
+            if ($val['type'] == 1){
+                $menuList[] =$val;
+            }
         }
+
+        return $this->listToTree($menuList,'id','pid','children');
     }
     /**
      * 获得用户资料,根据自己的情况读取数据库 
@@ -269,5 +274,33 @@ class Auth
             ->where('uid',$uid)
             ->update(['role_id'=>$role_id]);
         return true;
+    }
+
+    function listToTree($list, $pk = 'id', $pid = 'pid', $child = 'children', $root = 0) {
+        $tree = array();
+        if (is_array($list)) {
+            $refer = array();
+            foreach ($list as $key => $data) {
+                $refer[ $data[ $pk ] ] = &$list[ $key ];
+            }
+
+            foreach ($list as $key => $data) {
+                // 判断是否存在parent
+                $parentId = $data[ $pid ];
+
+                if ($root == $parentId) {
+                    $tree[ $data[ $pk ] ] = &$list[ $key ];
+                } else {
+                    if (isset($refer[$parentId])) {
+                        $parent = &$refer[ $parentId ];
+                        $parent[ $child ][ $data[ $pk ] ] = &$list[ $key ];
+
+                        $parent[ $child ] = array_values($parent[ $child ]);
+                    }
+                }
+            }
+        }
+
+        return $tree;
     }
 }
