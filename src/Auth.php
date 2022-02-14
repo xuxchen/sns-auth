@@ -1,10 +1,12 @@
 <?php
 
 namespace think\xuxchen;
+
 use think\facade\Db;
 use think\facade\Config;
 use think\facade\Session;
 use think\facade\Request;
+
 /**
  * 权限认证类
  * 功能特性：
@@ -20,45 +22,78 @@ use think\facade\Request;
  */
 //数据库 请手动创建下sql
 /*
-------------------------------
--- think_auth_rule，规则表，
--- id:主键，name：规则唯一标识, title：规则中文名称 status 状态：为1正常，为0禁用，condition：规则表达式，为空表示存在就验证，不为空表示按照条件验证
-------------------------------
- DROP TABLE IF EXISTS `think_auth_rule`;
-CREATE TABLE `think_auth_rule` (  
-    `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,  
-    `name` char(80) NOT NULL DEFAULT '',  
-    `title` char(20) NOT NULL DEFAULT '',  
-    `status` tinyint(1) NOT NULL DEFAULT '1',  
-    `condition` char(100) NOT NULL DEFAULT '',  
-    PRIMARY KEY (`id`),  
-    UNIQUE KEY `name` (`name`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
-------------------------------
--- think_auth_role 角色表， 
--- id：主键， title:角色中文名称， rules：角色拥有的规则id， 多个规则","隔开，status 状态：为1正常，为0禁用
-------------------------------
- DROP TABLE IF EXISTS `think_auth_role`;
-CREATE TABLE `think_auth_role` ( 
-    `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT, 
-    `title` char(100) NOT NULL DEFAULT '', 
-    `status` tinyint(1) NOT NULL DEFAULT '1', 
-    `rules` char(80) NOT NULL DEFAULT '', 
-    PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
-------------------------------
--- think_auth_role_access 角色明细表
--- uid:用户id，role_id：角色id
-------------------------------
-DROP TABLE IF EXISTS `think_auth_role_access`;
-CREATE TABLE `think_auth_role_access` (  
-    `uid` mediumint(8) unsigned NOT NULL,  
-    `role_id` mediumint(8) unsigned NOT NULL,
-    UNIQUE KEY `uid_role_id` (`uid`,`role_id`),
-    KEY `uid` (`uid`), 
-    KEY `role_id` (`role_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+
+-- ----------------------------
+-- Table structure for t_auth_role
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_role`;
+CREATE TABLE `t_auth_role` (
+  `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `name` char(100) NOT NULL DEFAULT '',
+  `status` tinyint(1) NOT NULL DEFAULT '1',
+  `sort` int(11) DEFAULT '50',
+  `create_time` int(10) DEFAULT NULL COMMENT '创建时间',
+  `update_time` int(10) DEFAULT NULL COMMENT '更新时间',
+  `delete_time` int(10) DEFAULT NULL COMMENT '删除时间',
+  `create_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '创建者',
+  `update_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '更新者',
+  `version` int(11) DEFAULT '0' COMMENT '乐观锁',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COMMENT='角色\n';
+
+-- ----------------------------
+-- Table structure for t_auth_rule
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_rule`;
+CREATE TABLE `t_auth_rule` (
+  `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `title` char(30) NOT NULL DEFAULT '' COMMENT '规则中文名称',
+  `module` varchar(20) DEFAULT NULL COMMENT '所属模型',
+  `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '类型(1=模块|2=导航|3=菜单|4=节点)',
+  `permission` varchar(100) DEFAULT '1' COMMENT '规则唯一标识',
+  `condition` char(100) NOT NULL DEFAULT '' COMMENT '规则表达式，为空表示存在就验证，不为空表示按照条件验证',
+  `pid` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '父ID',
+  `icon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '图标',
+  `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '规则URL',
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '备注',
+  `sort` int(11) DEFAULT '50' COMMENT '排序',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：为1正常，为0禁用',
+  `create_time` int(10) DEFAULT NULL COMMENT '创建时间',
+  `update_time` int(10) DEFAULT NULL COMMENT '更新时间',
+  `delete_time` int(10) DEFAULT NULL COMMENT '删除时间',
+  `create_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '创建者',
+  `update_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '更新者',
+  `version` int(11) DEFAULT '0' COMMENT '乐观锁',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=20 DEFAULT CHARSET=utf8 COMMENT='权限规则\n';
+
+-- ----------------------------
+-- Table structure for t_auth_rule_access
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_rule_access`;
+CREATE TABLE `t_auth_rule_access` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '类型(1=角色|2=用户)',
+  `type_id` int(11) NOT NULL COMMENT '类型主键',
+  `rule_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=50 DEFAULT CHARSET=utf8 COMMENT='角色-规则关系表\n';
+
+-- ----------------------------
+-- Table structure for t_auth_user_role
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_user_role`;
+CREATE TABLE `t_auth_user_role` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` int(11) unsigned NOT NULL,
+  `role_id` int(11) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uid_role_id` (`uid`,`role_id`),
+  KEY `uid` (`uid`),
+  KEY `role_id` (`role_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=29 DEFAULT CHARSET=utf8 COMMENT='用户-角色关系表';
 */
+
 class Auth
 {
     /**
@@ -70,10 +105,12 @@ class Auth
         'auth_on' => 1, // 权限开关
         'auth_type' => 1, // 认证方式，1为实时认证；2为登录认证。
         'auth_role' => 'auth_role', // 角色数据表名
-        'auth_role_access' => 'auth_role_access', // 用户-角色关系表
+        'auth_user_role' => 'auth_user_role', // 用户-角色关系表
         'auth_rule' => 'auth_rule', // 权限规则表
         'auth_user' => 'auth_user', // 用户信息表
+        'auth_rule_access' => 'auth_rule_access', // 角色-规则关系表
     ];
+
     /**
      * 类架构函数
      * Auth constructor.
@@ -85,6 +122,7 @@ class Auth
             $this->config = array_merge($this->config, $auth);
         }
     }
+
     /**
      * 初始化
      * access public
@@ -98,6 +136,7 @@ class Auth
         }
         return self::$instance;
     }
+
     /**
      * 检查权限
      * @param $name string|array  需要验证的规则列表,支持逗号分隔的权限规则或索引数组
@@ -126,16 +165,24 @@ class Auth
         if ('url' == $mode) {
             $REQUEST = unserialize(strtolower(serialize(Request::param())));
         }
+
         foreach ($authList as $avo) {
-            $auth = $avo['name'];
-            $query = preg_replace('/^.+\?/U', '', $auth);
-            if ('url' == $mode && $query != $auth) {
-                parse_str($query, $param); //解析规则中的param
-                $intersect = array_intersect_assoc($REQUEST, $param);
-                $auth = preg_replace('/\?.*$/U', '', $auth);
-                if (in_array($auth, $name) && $intersect == $param) {
-                    //如果节点相符且url参数满足
-                    $list[] = $auth;
+            $auth = $avo['permission'];
+            if ('url' == $mode) {
+                $query = preg_replace('/^.+\?/U', '', $auth);
+                if ($query == $auth){
+                    $auth = $avo['url'];
+                    if (in_array($auth, $name)) {
+                        $list[] = $auth;
+                    }
+                }else{
+                    parse_str($query, $param); //解析规则中的param
+                    $intersect = array_intersect_assoc($REQUEST, $param);
+                    $auth = preg_replace('/\?.*$/U', '', $auth);
+                    if (in_array($auth, $name) && $intersect == $param) {
+                        //如果节点相符且url参数满足
+                        $list[] = $auth;
+                    }
                 }
             } else {
                 if (in_array($auth, $name)) {
@@ -152,6 +199,7 @@ class Auth
         }
         return false;
     }
+
     /**
      * 根据用户id获取角色,返回值为数组
      * @param  $uid int     用户id
@@ -166,16 +214,17 @@ class Auth
             return $roles[$uid];
         }
         // 转换表名
-        $auth_role_access = $this->config['auth_role_access'];
+        $auth_user_role = $this->config['auth_user_role'];
         $auth_role = $this->config['auth_role'];
         // 执行查询
-        $user_roles = Db::view($auth_role_access, 'uid,role_id')
-            ->view($auth_role, 'title,rules', "{$auth_role_access}.role_id={$auth_role}.id", 'LEFT')
-            ->where("{$auth_role_access}.uid='{$uid}' and {$auth_role}.status='1'")
+        $user_roles = Db::view($auth_user_role, 'uid,role_id')
+            ->view($auth_role, 'name', "{$auth_user_role}.role_id={$auth_role}.id", 'LEFT')
+            ->where("{$auth_user_role}.uid='{$uid}' and {$auth_role}.status='1'")
             ->select();
         $roles[$uid] = $user_roles ?: [];
         return $roles[$uid];
     }
+
     /**
      * 获得权限列表
      * @param integer $uid 用户id
@@ -187,14 +236,35 @@ class Auth
         if (isset($_authList[$uid])) {
             return $_authList[$uid];
         }
-        if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid )) {
-            return Session::get('_auth_list_' . $uid );
+        if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid)) {
+            return Session::get('_auth_list_' . $uid);
         }
         //读取用户所属角色
         $roles = $this->getRoles($uid);
+        $rids = [];
         $ids = []; //保存用户所属角色设置的所有权限规则id
+
         foreach ($roles as $g) {
-            $ids = array_merge($ids, explode(',', trim($g['rules'], ',')));
+            $rids[] = $g['role_id'];
+        }
+
+        $map1 = [];
+        if ($rids) {
+            $map1 = [
+                ['type', '=', 1],
+                ['type_id', 'in', $rids],
+            ];
+        }
+        $map2 = [
+            ['type', '=', 2],
+            ['type_id', '=', $uid],
+        ];
+        $map = [$map1, $map2];
+        $roleRules = Db::name($this->config['auth_rule_access'])->where(function ($query) use ($map) {
+            $query->whereOr($map);
+        })->select();
+        foreach ($roleRules as $g) {
+            $ids[] = $g['rule_id'];
         }
         $ids = array_unique($ids);
         if (empty($ids)) {
@@ -202,11 +272,11 @@ class Auth
             return [];
         }
         $map = [
-            ['id','in', $ids],
-            ['status','=',1],
+            ['id', 'in', $ids],
+            ['status', '=', 1],
         ];
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,name,title,type,pid,icon,url,level')->select();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,permission')->select();
         //循环规则，判断结果。
         $authList = []; //
         foreach ($rules as $rule) {
@@ -232,17 +302,87 @@ class Auth
         return $authList;
     }
 
-    public function getPermissionMenuList($uid){
+    /**
+     * 获取菜单权限列表树
+     * @param $uid
+     * @return array
+     */
+    public function getPermissionMenuList($uid)
+    {
         $rules = $this->getAuthList($uid);
         $menuList = [];
         foreach ($rules as $val) {
-            if ($val['type'] == 1){
-                $menuList[] =$val;
+            if ($val['type'] != 4) {
+                $menuList[] = $val;
             }
         }
 
-        return $this->listToTree($menuList,'id','pid','children');
+        return $this->listToTree($menuList, 'id', 'pid', 'children');
     }
+
+    /**
+     * 获取所有菜单
+     * @return array
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\DbException
+     * @throws \think\db\exception\ModelNotFoundException
+     */
+    public function getAllMenuList()
+    {
+        $menuList = Db::name($this->config['auth_rule'])->where('delete_time', null)->field('id,condition,title,type,pid,icon,url,permission,status,remark,sort')->order("id asc")->select()->toArray();
+        return $menuList;
+    }
+
+
+    /**
+     * 根据角色/用户获取权限规则，配置的规则为选中
+     * @param $type
+     * @param $typeId
+     * @return array
+     * @throws \think\db\exception\DataNotFoundException
+     * @throws \think\db\exception\DbException
+     * @throws \think\db\exception\ModelNotFoundException
+     */
+    public function getRulePermission($type,$typeId = 0)
+    {
+        if ($typeId <= 0) {
+            return [];
+        }
+        $map = [
+            ['status', '=', 1],
+        ];
+        //读取角色所有权限规则
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,permission')->select()->toArray();
+
+        // 获取有权限的菜单
+        $where = [
+            ['type', '=', $type],
+            ['type_id', '=', $typeId],
+        ];
+        $permissionList = Db::name($this->config['auth_rule_access'])->where($where)->order("rule_id asc")->select()->toArray();
+        $checkList = [];
+        if ($permissionList) {
+            $checkList = array_column($permissionList, "rule_id");
+        }
+        $list = [];
+        if (!empty($rules)) {
+            foreach ($rules as $val) {
+                $data = [];
+                $data['id'] = $val['id'];
+                $data['name'] = trim($val['title']);
+                $data['pId'] = $val['pid'];
+                if (in_array($val['id'], $checkList)) {
+                    $data['checked'] = true;
+                } else {
+                    $data['checked'] = false;
+                }
+                $data['open'] = true;
+                $list[] = $data;
+            }
+        }
+        return $list;
+    }
+
     /**
      * 获得用户资料,根据自己的情况读取数据库
      */
@@ -257,46 +397,100 @@ class Auth
         }
         return $userinfo[$uid];
     }
-    //根据uid获取角色名称
-    function getRole($uid){
-        try{
-            $auth_role_access =  Db::name($this->config['auth_role_access'])->where('uid',$uid)->find();
-            $title =   Db::name($this->config['auth_role'])->where('id',$auth_role_access['role_id'])->value('title');
+
+    /**
+     * 根据uid获取角色名称
+     * @param $uid
+     * @return mixed|string
+     */
+    function getRole($uid)
+    {
+        try {
+            $auth_user_role = Db::name($this->config['auth_user_role'])->where('uid', $uid)->find();
+            $title = Db::name($this->config['auth_role'])->where('id', $auth_user_role['role_id'])->value('title');
             return $title;
-        }catch (\Exception $e){
+        } catch (\Exception $e) {
             return '此用户未授予角色';
         }
     }
+
     /**
      * 授予用户权限
      */
-    public   function  setRole($uid,$role_id){
-        $res =  Db::name('auth_role_access')
-            ->where('uid',$uid)
-            ->update(['role_id'=>$role_id]);
+    public function setRole($uid, $role_id)
+    {
+        $res = Db::name('auth_user_role')
+            ->where('uid', $uid)
+            ->update(['role_id' => $role_id]);
         return true;
     }
 
-    function listToTree($list, $pk = 'id', $pid = 'pid', $child = 'children', $root = 0) {
+    public function setRoles($uid, array $roleIds)
+    {
+        // 删除现有的角色
+        Db::name($this->config['auth_user_role'])->where('uid',$uid)->delete();
+        if ($roleIds){
+            foreach ($roleIds as $val) {
+                $data = [
+                    'uid' => $uid,
+                    'role_id' => $val,
+                ];
+                Db::name($this->config['auth_user_role'])->save($data);
+            }
+        }
+        return true;
+    }
+
+    /**
+     * 授予权限
+     * @param $type
+     * @param $typeId
+     * @param $ruleIds
+     * @return void
+     * @throws \think\db\exception\DbException
+     */
+    public function setRulePermission($type,$typeId,$ruleIds){
+        $roleRuleModel = Db::name($this->config['auth_rule_access']);
+        // 删除现有的权限
+        $where = [
+            ['type', '=', $type],
+            ['type_id', '=', $typeId],
+        ];
+        $roleRuleModel->where($where)->delete();
+        if ($ruleIds) {
+            $itemArr = explode(',', $ruleIds);
+            foreach ($itemArr as $val) {
+                $data = [
+                    'type' => $type,
+                    'type_id' => $typeId,
+                    'rule_id' => $val,
+                ];
+                Db::name($this->config['auth_rule_access'])->save($data);
+            }
+        }
+    }
+
+    function listToTree($list, $pk = 'id', $pid = 'pid', $child = 'children', $root = 0)
+    {
         $tree = array();
         if (is_array($list)) {
             $refer = array();
             foreach ($list as $key => $data) {
-                $refer[ $data[ $pk ] ] = &$list[ $key ];
+                $refer[$data[$pk]] = &$list[$key];
             }
 
             foreach ($list as $key => $data) {
                 // 判断是否存在parent
-                $parentId = $data[ $pid ];
+                $parentId = $data[$pid];
 
                 if ($root == $parentId) {
-                    $tree[ $data[ $pk ] ] = &$list[ $key ];
+                    $tree[$data[$pk]] = &$list[$key];
                 } else {
                     if (isset($refer[$parentId])) {
-                        $parent = &$refer[ $parentId ];
-                        $parent[ $child ][ $data[ $pk ] ] = &$list[ $key ];
+                        $parent = &$refer[$parentId];
+                        $parent[$child][$data[$pk]] = &$list[$key];
 
-                        $parent[ $child ] = array_values($parent[ $child ]);
+                        $parent[$child] = array_values($parent[$child]);
                     }
                 }
             }
