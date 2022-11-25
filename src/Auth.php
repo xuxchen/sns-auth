@@ -289,7 +289,7 @@ class Auth
         }
 
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,permission')->select();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->select();
         //循环规则，判断结果。
         $authList = []; //
         foreach ($rules as $rule) {
@@ -342,7 +342,7 @@ class Auth
      */
     public function getAllMenuList()
     {
-        $menuList = Db::name($this->config['auth_rule'])->where('delete_time', null)->field('id,condition,title,type,pid,icon,url,permission,status,remark,sort')->order("id asc")->select()->toArray();
+        $menuList = Db::name($this->config['auth_rule'])->where('delete_time', null)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->order("id asc")->select()->toArray();
         return $menuList;
     }
 
@@ -365,7 +365,7 @@ class Auth
             ['status', '=', 1],
         ];
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,permission')->select()->toArray();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->select()->toArray();
 
         // 获取有权限的菜单
         $where = [
