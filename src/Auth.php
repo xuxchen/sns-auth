@@ -55,9 +55,12 @@ CREATE TABLE `t_auth_rule` (
   `pid` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '父ID',
   `icon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '图标',
   `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '规则URL',
+  `component` varchar(255) DEFAULT NULL,
+  `target` char(20) DEFAULT NULL,
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '备注',
   `sort` int(11) DEFAULT '50' COMMENT '排序',
   `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：为1正常，为0禁用',
+  `note` varchar(50) DEFAULT NULL,
   `create_time` int(10) DEFAULT NULL COMMENT '创建时间',
   `update_time` int(10) DEFAULT NULL COMMENT '更新时间',
   `delete_time` int(10) DEFAULT NULL COMMENT '删除时间',
@@ -65,7 +68,7 @@ CREATE TABLE `t_auth_rule` (
   `update_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '更新者',
   `version` int(11) DEFAULT '0' COMMENT '乐观锁',
   PRIMARY KEY (`id`) USING BTREE
-) ENGINE=MyISAM AUTO_INCREMENT=20 DEFAULT CHARSET=utf8 COMMENT='权限规则\n';
+) ENGINE=MyISAM AUTO_INCREMENT=216 DEFAULT CHARSET=utf8 COMMENT='权限规则';
 
 -- ----------------------------
 -- Table structure for t_auth_rule_access

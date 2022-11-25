@@ -26,45 +26,79 @@ The ThinkPHP6 Auth Package
 > `t_` 为自定义的数据表前缀
 
 ```
-------------------------------
--- t_auth_rule，规则表，
--- id:主键，name：规则唯一标识, title：规则中文名称 status 状态：为1正常，为0禁用，condition：规则表达式，为空表示存在就验证，不为空表示按照条件验证
-------------------------------
+
+-- ----------------------------
+-- Table structure for t_auth_role
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_role`;
+CREATE TABLE `t_auth_role` (
+  `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `name` char(100) NOT NULL DEFAULT '',
+  `status` tinyint(1) NOT NULL DEFAULT '1',
+  `sort` int(11) DEFAULT '50',
+  `create_time` int(10) DEFAULT NULL COMMENT '创建时间',
+  `update_time` int(10) DEFAULT NULL COMMENT '更新时间',
+  `delete_time` int(10) DEFAULT NULL COMMENT '删除时间',
+  `create_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '创建者',
+  `update_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '更新者',
+  `version` int(11) DEFAULT '0' COMMENT '乐观锁',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=8 DEFAULT CHARSET=utf8 COMMENT='角色\n';
+
+-- ----------------------------
+-- Table structure for t_auth_rule
+-- ----------------------------
 DROP TABLE IF EXISTS `t_auth_rule`;
-CREATE TABLE `t_auth_rule` (  
-    `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,  
-    `name` char(80) NOT NULL DEFAULT '',  
-    `title` char(20) NOT NULL DEFAULT '',  
-    `status` tinyint(1) NOT NULL DEFAULT '1',  
-    `type` tinyint(1) NOT NULL DEFAULT '1',  
-    `condition` char(100) NOT NULL DEFAULT '',  
-    PRIMARY KEY (`id`),  
-    UNIQUE KEY `name` (`name`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
-------------------------------
--- t_auth_group 用户组表， 
--- id：主键， title:用户组中文名称， rules：用户组拥有的规则id， 多个规则","隔开，status 状态：为1正常，为0禁用
-------------------------------
-DROP TABLE IF EXISTS `t_auth_group`;
-CREATE TABLE `t_auth_group` ( 
-    `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT, 
-    `title` char(100) NOT NULL DEFAULT '', 
-    `status` tinyint(1) NOT NULL DEFAULT '1', 
-    `rules` char(80) NOT NULL DEFAULT '', 
-    PRIMARY KEY (`id`)
-) ENGINE=MyISAM  DEFAULT CHARSET=utf8;
-------------------------------
--- t_auth_group_access 用户组明细表
--- uid:用户id，group_id：用户组id
-------------------------------
-DROP TABLE IF EXISTS `t_auth_group_access`;
-CREATE TABLE `t_auth_group_access` (  
-    `uid` mediumint(8) unsigned NOT NULL,  
-    `role_id` mediumint(8) unsigned NOT NULL, 
-    UNIQUE KEY `uid_role_id` (`uid`,`role_id`),  
-    KEY `uid` (`uid`), 
-    KEY `role_id` (`role_id`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;
+CREATE TABLE `t_auth_rule` (
+  `id` mediumint(8) unsigned NOT NULL AUTO_INCREMENT,
+  `title` char(30) NOT NULL DEFAULT '' COMMENT '规则中文名称',
+  `module` varchar(20) DEFAULT NULL COMMENT '所属模型',
+  `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '类型(1=模块|2=导航|3=菜单|4=节点)',
+  `permission` varchar(100) DEFAULT '1' COMMENT '规则唯一标识',
+  `condition` char(100) NOT NULL DEFAULT '' COMMENT '规则表达式，为空表示存在就验证，不为空表示按照条件验证',
+  `pid` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '父ID',
+  `icon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '图标',
+  `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '规则URL',
+  `component` varchar(255) DEFAULT NULL,
+  `target` char(20) DEFAULT NULL,
+  `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '备注',
+  `sort` int(11) DEFAULT '50' COMMENT '排序',
+  `status` tinyint(1) NOT NULL DEFAULT '1' COMMENT '状态：为1正常，为0禁用',
+  `note` varchar(50) DEFAULT NULL,
+  `create_time` int(10) DEFAULT NULL COMMENT '创建时间',
+  `update_time` int(10) DEFAULT NULL COMMENT '更新时间',
+  `delete_time` int(10) DEFAULT NULL COMMENT '删除时间',
+  `create_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '创建者',
+  `update_by` varchar(20) CHARACTER SET utf8mb4 DEFAULT NULL COMMENT '更新者',
+  `version` int(11) DEFAULT '0' COMMENT '乐观锁',
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=216 DEFAULT CHARSET=utf8 COMMENT='权限规则';
+
+-- ----------------------------
+-- Table structure for t_auth_rule_access
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_rule_access`;
+CREATE TABLE `t_auth_rule_access` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `type` tinyint(1) NOT NULL DEFAULT '1' COMMENT '类型(1=角色|2=用户)',
+  `type_id` int(11) NOT NULL COMMENT '类型主键',
+  `rule_id` int(10) unsigned NOT NULL,
+  PRIMARY KEY (`id`) USING BTREE
+) ENGINE=MyISAM AUTO_INCREMENT=50 DEFAULT CHARSET=utf8 COMMENT='角色-规则关系表\n';
+
+-- ----------------------------
+-- Table structure for t_auth_user_role
+-- ----------------------------
+DROP TABLE IF EXISTS `t_auth_user_role`;
+CREATE TABLE `t_auth_user_role` (
+  `id` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `uid` int(11) unsigned NOT NULL,
+  `role_id` int(11) unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uid_role_id` (`uid`,`role_id`),
+  KEY `uid` (`uid`),
+  KEY `role_id` (`role_id`)
+) ENGINE=MyISAM AUTO_INCREMENT=29 DEFAULT CHARSET=utf8 COMMENT='用户-角色关系表';
 ```
 
 ## 原理
@@ -72,8 +106,8 @@ Auth权限认证是按规则进行认证。
 在数据库中我们有 
 
 - 规则表（t_auth_rule） 
-- 用户组表(t_auth_group) 
-- 用户组明显表（t_auth_group_access）
+- 用户组表(t_auth_user) 
+- 用户组明显表（t_auth_user_role）
 
 我们在规则表中定义权限规则， 在用户组表中定义每个用户组有哪些权限规则，在用户组明显表中定义用户所属的用户组。 
 
@@ -85,7 +119,7 @@ Auth权限认证是按规则进行认证。
 判断权限方法
 ```
 // 引入类库
-use think\wenhainan\Auth;
+use think\xuxchen\Auth;
 
 // 获取auth实例
 $auth = Auth::instance();
@@ -103,7 +137,7 @@ Auth类也可以对节点进行认证，我们只要将规则名称，定义为�
 ```
 <?php
 use think\Controller;
-use think\wenhainan\Auth;
+use think\xuxchen\Auth;
 class Base extends Controller
 {
     public function _initialize()
