@@ -498,7 +498,7 @@ class Auth
                 $parentId = $data[$pid];
 
                 if ($root == $parentId) {
-                    $tree[$data[$pk]] = &$list[$key];
+                    $tree[] = &$list[$key];
                 } else {
                     if (isset($refer[$parentId])) {
                         $parent = &$refer[$parentId];
