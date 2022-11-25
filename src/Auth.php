@@ -170,12 +170,12 @@ class Auth
             $auth = $avo['permission'];
             if ('url' == $mode) {
                 $query = preg_replace('/^.+\?/U', '', $auth);
-                if ($query == $auth){
+                if ($query == $auth) {
                     $auth = $avo['url'];
                     if (in_array($auth, $name)) {
                         $list[] = $auth;
                     }
-                }else{
+                } else {
                     parse_str($query, $param); //解析规则中的param
                     $intersect = array_intersect_assoc($REQUEST, $param);
                     $auth = preg_replace('/\?.*$/U', '', $auth);
@@ -218,7 +218,7 @@ class Auth
         $auth_role = $this->config['auth_role'];
         // 执行查询
         $user_roles = Db::view($auth_user_role, 'uid,role_id')
-            ->view($auth_role, 'name', "{$auth_user_role}.role_id={$auth_role}.id", 'LEFT')
+            ->view($auth_role, 'name,is_super', "{$auth_user_role}.role_id={$auth_role}.id", 'LEFT')
             ->where("{$auth_user_role}.uid='{$uid}' and {$auth_role}.status='1'")
             ->select();
         $roles[$uid] = $user_roles ?: [];
@@ -236,45 +236,55 @@ class Auth
         if (isset($_authList[$uid])) {
             return $_authList[$uid];
         }
-        if (2 == $this->config['auth_type'] && Session::has('_auth_list_' . $uid)) {
-            return Session::get('_auth_list_' . $uid);
+        if (2 == $this->config['auth_type'] && Session::has('admin_auth_list_' . $uid)) {
+            return Session::get('admin_auth_list_' . $uid);
         }
         //读取用户所属角色
         $roles = $this->getRoles($uid);
         $rids = [];
         $ids = []; //保存用户所属角色设置的所有权限规则id
-
+        $isSuper = false;
         foreach ($roles as $g) {
+            if ($g['is_super'] == 1) {
+                $isSuper = true;
+                break;
+            }
             $rids[] = $g['role_id'];
         }
-
-        $map1 = [];
-        if ($rids) {
-            $map1 = [
-                ['type', '=', 1],
-                ['type_id', 'in', $rids],
+        if (!$isSuper) {
+            $map1 = ['rule_id', '>', 0];
+            if ($rids) {
+                $map1 = [
+                    ['type', '=', 1],
+                    ['type_id', 'in', $rids],
+                ];
+            }
+            $map2 = [
+                ['type', '=', 2],
+                ['type_id', '=', $uid],
+            ];
+            $map = [$map1, $map2];
+            $roleRules = Db::name($this->config['auth_rule_access'])->where(function ($query) use ($map) {
+                $query->whereOr($map);
+            })->select();
+            foreach ($roleRules as $g) {
+                $ids[] = $g['rule_id'];
+            }
+            $ids = array_unique($ids);
+            if (empty($ids)) {
+                $_authList[$uid] = [];
+                return [];
+            }
+            $map = [
+                ['id', 'in', $ids],
+                ['status', '=', 1],
+            ];
+        }else{
+            $map = [
+                ['status', '=', 1],
             ];
         }
-        $map2 = [
-            ['type', '=', 2],
-            ['type_id', '=', $uid],
-        ];
-        $map = [$map1, $map2];
-        $roleRules = Db::name($this->config['auth_rule_access'])->where(function ($query) use ($map) {
-            $query->whereOr($map);
-        })->select();
-        foreach ($roleRules as $g) {
-            $ids[] = $g['rule_id'];
-        }
-        $ids = array_unique($ids);
-        if (empty($ids)) {
-            $_authList[$uid] = [];
-            return [];
-        }
-        $map = [
-            ['id', 'in', $ids],
-            ['status', '=', 1],
-        ];
+
         //读取角色所有权限规则
         $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,permission')->select();
         //循环规则，判断结果。
@@ -297,7 +307,7 @@ class Auth
         $_authList[$uid] = $authList;
         if (2 == $this->config['auth_type']) {
             //规则列表结果保存到session
-            Session::set('_auth_list_' . $uid, $authList);
+            Session::set('admin_auth_list_' . $uid, $authList);
         }
         return $authList;
     }
@@ -343,7 +353,7 @@ class Auth
      * @throws \think\db\exception\DbException
      * @throws \think\db\exception\ModelNotFoundException
      */
-    public function getRulePermission($type,$typeId = 0)
+    public function getRulePermission($type, $typeId = 0)
     {
         if ($typeId <= 0) {
             return [];
@@ -422,14 +432,15 @@ class Auth
         $res = Db::name('auth_user_role')
             ->where('uid', $uid)
             ->update(['role_id' => $role_id]);
+        Session::delete("admin_auth_list_" . $uid);
         return true;
     }
 
     public function setRoles($uid, array $roleIds)
     {
         // 删除现有的角色
-        Db::name($this->config['auth_user_role'])->where('uid',$uid)->delete();
-        if ($roleIds){
+        Db::name($this->config['auth_user_role'])->where('uid', $uid)->delete();
+        if ($roleIds) {
             foreach ($roleIds as $val) {
                 $data = [
                     'uid' => $uid,
@@ -438,6 +449,7 @@ class Auth
                 Db::name($this->config['auth_user_role'])->save($data);
             }
         }
+        Session::delete("admin_auth_list_" . $uid);
         return true;
     }
 
@@ -449,7 +461,8 @@ class Auth
      * @return void
      * @throws \think\db\exception\DbException
      */
-    public function setRulePermission($type,$typeId,$ruleIds){
+    public function setRulePermission($type, $typeId, $ruleIds)
+    {
         $roleRuleModel = Db::name($this->config['auth_rule_access']);
         // 删除现有的权限
         $where = [
@@ -468,6 +481,7 @@ class Auth
                 Db::name($this->config['auth_rule_access'])->save($data);
             }
         }
+        Session::delete("admin_auth_list_" . $typeId);
     }
 
     function listToTree($list, $pk = 'id', $pid = 'pid', $child = 'children', $root = 0)
