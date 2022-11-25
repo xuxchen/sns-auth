@@ -54,7 +54,7 @@ CREATE TABLE `t_auth_rule` (
   `condition` char(100) NOT NULL DEFAULT '' COMMENT '规则表达式，为空表示存在就验证，不为空表示按照条件验证',
   `pid` int(10) unsigned NOT NULL DEFAULT '0' COMMENT '父ID',
   `icon` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '图标',
-  `url` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '规则URL',
+  `path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '规则URL',
   `component` varchar(255) DEFAULT NULL,
   `target` char(20) DEFAULT NULL,
   `remark` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT '' COMMENT '备注',
@@ -174,7 +174,7 @@ class Auth
             if ('url' == $mode) {
                 $query = preg_replace('/^.+\?/U', '', $auth);
                 if ($query == $auth) {
-                    $auth = $avo['url'];
+                    $auth = $avo['path'];
                     if (in_array($auth, $name)) {
                         $list[] = $auth;
                     }
@@ -289,7 +289,7 @@ class Auth
         }
 
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->select();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,path,component,target,permission,status,note,remark,sort')->select();
         //循环规则，判断结果。
         $authList = []; //
         foreach ($rules as $rule) {
@@ -342,7 +342,7 @@ class Auth
      */
     public function getAllMenuList()
     {
-        $menuList = Db::name($this->config['auth_rule'])->where('delete_time', null)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->order("id asc")->select()->toArray();
+        $menuList = Db::name($this->config['auth_rule'])->where('delete_time', null)->field('id,condition,title,type,pid,icon,path,component,target,permission,status,note,remark,sort')->order("id asc")->select()->toArray();
         return $menuList;
     }
 
@@ -365,7 +365,7 @@ class Auth
             ['status', '=', 1],
         ];
         //读取角色所有权限规则
-        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,url,component,target,permission,status,note,remark,sort')->select()->toArray();
+        $rules = Db::name($this->config['auth_rule'])->where($map)->field('id,condition,title,type,pid,icon,path,component,target,permission,status,note,remark,sort')->select()->toArray();
 
         // 获取有权限的菜单
         $where = [
