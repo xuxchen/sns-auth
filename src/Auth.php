@@ -349,8 +349,8 @@ class Auth
 
     /**
      * 根据角色/用户获取权限规则，配置的规则为选中
-     * @param $type
-     * @param $typeId
+     * @param $type  类型(1=角色|2=用户)
+     * @param $typeId  主键
      * @return array
      * @throws \think\db\exception\DataNotFoundException
      * @throws \think\db\exception\DbException
@@ -396,6 +396,22 @@ class Auth
         return $list;
     }
 
+    /**
+     * 获取用户权限的菜单节点授权标识
+     * @param $adminId
+     * @return array
+     */
+    public function getPermissionsList($adminId)
+    {
+        $list = [];
+        $authList = $this->getAuthList($adminId);
+        foreach ($authList as $item){
+            if ($item['type'] == 4){
+                $list[] = $item['permission'];
+            }
+        }
+        return $list;
+    }
     /**
      * 获得用户资料,根据自己的情况读取数据库
      */
@@ -487,6 +503,15 @@ class Auth
         Session::delete("admin_auth_list_" . $typeId);
     }
 
+    /**
+     * 数组转为树结构
+     * @param $list
+     * @param $pk
+     * @param $pid
+     * @param $child
+     * @param $root
+     * @return array
+     */
     function listToTree($list, $pk = 'id', $pid = 'pid', $child = 'children', $root = 0)
     {
         $tree = array();
